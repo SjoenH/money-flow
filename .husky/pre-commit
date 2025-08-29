@@ -1,0 +1,3 @@
+#!/usr/bin/env sh
+# Husky pre-commit (no sourcing needed)
+pnpm lint || exit 1

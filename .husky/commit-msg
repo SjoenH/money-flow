@@ -1,0 +1,4 @@
+#!/usr/bin/env sh
+# Commit message lint
+exec < /dev/tty || true
+npx --no-install commitlint --edit "$1"
