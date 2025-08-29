@@ -2,6 +2,13 @@
 
 Interactive budgeting & expense ingestion with graph + table views, OCR (images & PDF), Norwegian support, line‑item parsing, and AI‑assisted categorization.
 
+## 🌟 Live Demo
+
+**Try it now**: [https://sjoenh.github.io/money-flow/](https://sjoenh.github.io/money-flow/)
+
+[![GitHub Release](https://img.shields.io/github/v/release/SjoenH/money-flow)](https://github.com/SjoenH/money-flow/releases)
+[![GitHub Pages](https://img.shields.io/badge/demo-live-success)](https://sjoenh.github.io/money-flow/)
+
 ## ✨ Features
 
 - React Flow graph of income sources & drains (fixed or %) with live totals & remaining
@@ -80,7 +87,17 @@ pnpm dev       # Dev server
 pnpm build     # Type-check + build
 pnpm preview   # Preview build
 pnpm lint      # ESLint
+pnpm release   # Create semantic release (CI only)
 ```
+
+## 🚀 Releases & Deployment
+
+This project uses semantic-release for automated versioning and GitHub Pages for hosting:
+
+- **Releases**: Automatic based on conventional commits (`feat:`, `fix:`, etc.)
+- **Changelog**: Auto-generated from commit messages
+- **Deployment**: Automatic to GitHub Pages on releases
+- **Live Demo**: Always reflects the latest release
 
 ## ♻️ Conventional Commits & Hooks
 
@@ -129,7 +146,14 @@ Add a LICENSE (e.g. MIT) if distributing. Currently private.
 
 Open issues/PRs with difficult Norwegian receipts to enhance heuristics.
 
+## 📊 Project Status
+
+- ✅ **Core Features**: Complete with graph, table, and expense views
+- ✅ **OCR Pipeline**: Norwegian + English with PDF support
+- ✅ **AI Integration**: On-device categorization and roasts
+- ✅ **Release Pipeline**: Semantic versioning and auto-deployment
+- ✅ **Live Demo**: Hosted on GitHub Pages
+
 ---
 
 Built with React, TypeScript, Vite, React Flow & Tesseract.js – plus a sarcastic paperclip.
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
