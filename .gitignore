@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+*.tsbuildinfo
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Editor
+.vscode/
+.DS_Store
+
+# Local data
+*.local.json
+.env
+.env.*
+
+# Misc caches
+.cache/
+.next/
+coverage/
+
+# Generated
+public/*.map
