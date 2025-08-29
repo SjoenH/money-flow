@@ -1,3 +1,10 @@
+# [1.1.0](https://github.com/SjoenH/money-flow/compare/v1.0.0...v1.1.0) (2025-08-29)
+
+
+### Features
+
+* add GitHub Pages deployment for SPA hosting ([18e346c](https://github.com/SjoenH/money-flow/commit/18e346ce56a753fe368bbf7521e5c62f727d43a7))
+
 # 1.0.0 (2025-08-29)
 
 
