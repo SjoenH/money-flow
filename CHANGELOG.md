@@ -1,3 +1,10 @@
+# [1.5.0](https://github.com/SjoenH/money-flow/compare/v1.4.0...v1.5.0) (2025-08-30)
+
+
+### Features
+
+* enhance OCR test data with version tracking and anonymization ([08fcd93](https://github.com/SjoenH/money-flow/commit/08fcd93abf11c75ed149550cfdb5786dcc049b93))
+
 # [1.4.0](https://github.com/SjoenH/money-flow/compare/v1.3.0...v1.4.0) (2025-08-30)
 
 
