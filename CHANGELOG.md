@@ -1,3 +1,10 @@
+# [1.2.0](https://github.com/SjoenH/money-flow/compare/v1.1.0...v1.2.0) (2025-08-30)
+
+
+### Features
+
+* implement comprehensive import/export functionality ([cc0510e](https://github.com/SjoenH/money-flow/commit/cc0510e13b75573cc89fa0ec03cdf7c7b75db016))
+
 # [1.1.0](https://github.com/SjoenH/money-flow/compare/v1.0.0...v1.1.0) (2025-08-29)
 
 
