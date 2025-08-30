@@ -130,6 +130,9 @@ pnpm dev       # Dev server
 pnpm build     # Type-check + build
 pnpm preview   # Preview build
 pnpm lint      # ESLint
+pnpm test      # Run Playwright tests
+pnpm test:headed # Run tests in headed mode
+pnpm test:ui   # Run tests with UI
 pnpm release   # Create semantic release (CI only)
 ```
 
@@ -156,6 +159,27 @@ feat: add batch receipt import
 fix(ocr): handle zero-byte pdf
 chore(ci): add semantic release config
 ```
+
+## 🧪 Testing
+
+The project includes comprehensive end-to-end tests using Playwright:
+
+```bash
+pnpm test              # Run all tests
+pnpm test:headed       # Run with visible browser
+pnpm test:ui           # Interactive test UI
+pnpm test:debug        # Debug mode
+```
+
+**Test Coverage:**
+
+- ✅ Core functionality (budget creation, calculations)
+- ✅ Import/export (JSON/CSV formats)
+- ✅ Expense management and categorization
+- ✅ Graph interactions and ReactFlow features
+- ✅ End-to-end workflows and persistence
+
+See `/tests/README.md` for detailed testing documentation.
 
 ## 🔮 Roadmap
 
