@@ -1,6 +1,48 @@
 # Money Flow Visualizer
 
-Interactive budgeting & expense ingestion with graph + table views, OCR (images & PDF), Norwegian support, line‑item parsing, and AI‑assisted categorization.
+Interactive bu## 🧭 Workflow
+
+1. Add sources & drains (kr or %).  
+2. Switch Graph / Planned Table / Expenses views.  
+3. Upload a receipt (image/PDF) with empty fields → auto import & parse.  
+4. Expand line items; adjust categories.  
+5. Inspect variance (planned vs actual).  
+6. **Export/Import**: Backup complete data (JSON) or expenses only (CSV).
+7. Enjoy (or fear) Evil Clippy's commentary.
+
+## 💾 Import/Export
+
+The app supports multiple import/export formats for different use cases:
+
+### JSON Export/Import (Complete Backup)
+
+- **Export All**: Complete app backup including nodes, edges, and expenses
+- **Import All**: Restore complete app state from backup
+- **Budget Only**: Export just sources & drains for template sharing
+- **Use cases**: Data backup, device migration, sharing budget templates
+
+### CSV Export/Import (Expenses Only)  
+
+- **Export Expenses**: All expense data in spreadsheet-friendly format
+- **Import Expenses**: Add expenses from CSV (appends to existing)
+- **Format**: Date, Description, Amount, Category, Merchant, VAT, Currency, Notes
+- **Use cases**: Spreadsheet analysis, integration with other financial tools
+
+### Export Options Available
+
+| Format | Content | Location | Use Case |
+|--------|---------|----------|----------|
+| **JSON (All)** | Complete app state | Main controls + Expenses tab | Full backup/restore |
+| **JSON (Budget)** | Sources & drains only | Planned Table tab | Template sharing |
+| **CSV (Expenses)** | Expense records | Expenses tab | Spreadsheet analysis |
+
+### Import Features
+
+- **Automatic validation** of file format and structure
+- **Backup creation** before import (stored in localStorage)
+- **Confirmation dialogs** showing what will be imported
+- **Error handling** with clear feedback messages
+- **Category matching** for CSV imports (matches existing drain node labels)& expense ingestion with graph + table views, OCR (images & PDF), Norwegian support, line‑item parsing, and AI‑assisted categorization.
 
 ## 🌟 Live Demo
 
@@ -21,6 +63,7 @@ Interactive budgeting & expense ingestion with graph + table views, OCR (images 
 - Line-item extraction (amount, qty × unit price inference) + per-item category mapping
 - Heuristic + optional on-device AI categorization (auto-creates drain nodes)
 - Variance report: planned vs actual per category
+- **Import/Export functionality**: JSON (complete backup) & CSV (expenses only)
 - Evil Clippy AI roast widget (throttled, fallback snark)
 - LocalStorage persistence (nodes, edges, expenses)
 - Robust edge ID generation & duplicate cleanup
@@ -119,7 +162,8 @@ chore(ci): add semantic release config
 - Batch multi-file import
 - OCR preprocessing (deskew, threshold)
 - AI structured JSON normalization (merchant/date/items)
-- Export/Import (CSV/JSON), cloud sync option
+- ✅ **Export/Import (CSV/JSON)**: Complete backup/restore and spreadsheet integration
+- Cloud sync option
 - IndexedDB OCR cache / service worker
 - Automated tests for parsing & categorization
 

@@ -1,0 +1,9 @@
+Date,Description,Amount (kr),Category,Merchant,VAT Amount,Currency,Notes,Has Line Items
+2024-01-15,"Grocery shopping",856.50,Groceries,"REMA 1000",171.30,NOK,"Weekly groceries",No
+2024-01-16,"Coffee and pastry",89.00,Dining,"Espresso House",,NOK,,No
+2024-01-17,"Fuel for car",742.00,Transport,"Shell",148.40,NOK,"Full tank",No
+2024-01-18,"Internet bill",599.00,Internet,"Telenor",119.80,NOK,"Monthly subscription",No
+2024-01-19,"Restaurant dinner",1250.00,Dining,"Maaemo",,NOK,"Special occasion",No
+2024-01-20,"Electricity bill",890.00,Utilities,"Elvia",178.00,NOK,"January usage",No
+2024-01-21,"Mobile phone bill",299.00,Mobile,"Telia",59.80,NOK,"Monthly plan",No
+2024-01-22,"Grocery shopping",623.75,Groceries,"ICA",124.75,NOK,,No

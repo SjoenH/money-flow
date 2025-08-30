@@ -1142,6 +1142,40 @@ function FlowCanvas() {
         <div style={{ background: '#B22222', color: '#fff', padding: '8px 12px', borderRadius: 6 }}>Drains (Planned): kr {formatNOK(drainTotal)}</div>
         <div style={{ background: '#6B46C1', color: '#fff', padding: '8px 12px', borderRadius: 6 }}>Remaining (Planned): kr {formatNOK(remaining)}</div>
       </div>
+
+      {/* Budget Export/Import Controls */}
+      <div style={{ marginTop: 12, padding: '8px 12px', background: '#f8f9fa', borderRadius: 6, border: '1px solid #dee2e6' }}>
+        <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 6 }}>Budget Data</div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <button
+            onClick={() => {
+              const budgetData = {
+                version: '1.0.0',
+                exportDate: new Date().toISOString(),
+                type: 'budget-only',
+                data: {
+                  nodes: nodes.filter(n => n.id !== 'total-node' && n.id !== 'remaining-node'),
+                  edges: edges.filter(e => e.id !== 'total-to-remaining-edge')
+                }
+              };
+              const dataStr = JSON.stringify(budgetData, null, 2);
+              const dataBlob = new Blob([dataStr], { type: 'application/json' });
+              const url = URL.createObjectURL(dataBlob);
+              const link = document.createElement('a');
+              link.href = url;
+              link.download = `money-flow-budget-${new Date().toISOString().slice(0, 10)}.json`;
+              link.click();
+              URL.revokeObjectURL(url);
+            }}
+            style={{ background: '#4A90E2', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: 4, cursor: 'pointer', fontSize: 12 }}
+          >
+            💰 Export Budget Only
+          </button>
+        </div>
+        <div style={{ fontSize: 11, color: '#666', marginTop: 4 }}>
+          Export only sources & drains (no expenses) for budget template sharing
+        </div>
+      </div>
     </div>
   );
 
@@ -1420,6 +1454,219 @@ function FlowCanvas() {
 
   const totalActualThisPeriod = useMemo(() => filteredExpenses.reduce((s, e) => s + e.amount, 0), [filteredExpenses]);
 
+  // Import/Export functionality
+  const exportToJSON = useCallback(() => {
+    const exportData = {
+      version: '1.0.0',
+      exportDate: new Date().toISOString(),
+      data: {
+        nodes: nodes.filter(n => n.id !== 'total-node' && n.id !== 'remaining-node'), // Exclude system nodes
+        edges: edges.filter(e => e.id !== 'total-to-remaining-edge'), // Exclude system edge
+        expenses
+      }
+    };
+    
+    const dataStr = JSON.stringify(exportData, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `money-flow-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }, [nodes, edges, expenses]);
+
+  const exportExpensesToCSV = useCallback(() => {
+    const headers = [
+      'Date', 'Description', 'Amount (kr)', 'Category', 'Merchant', 
+      'VAT Amount', 'Currency', 'Notes', 'Has Line Items'
+    ];
+    
+    const csvRows = [headers.join(',')];
+    
+    expenses.forEach(expense => {
+      const drainNode = expense.drainNodeId ? nodes.find(n => n.id === expense.drainNodeId) : undefined;
+      const row = [
+        expense.date,
+        `"${expense.description.replace(/"/g, '""')}"`,
+        expense.amount.toString(),
+        drainNode ? `"${drainNode.data.label.replace(/"/g, '""')}"` : '',
+        expense.merchant ? `"${expense.merchant.replace(/"/g, '""')}"` : '',
+        expense.vatAmount?.toString() || '',
+        expense.currency || '',
+        expense.notes ? `"${expense.notes.replace(/"/g, '""')}"` : '',
+        expense.items && expense.items.length > 0 ? 'Yes' : 'No'
+      ];
+      csvRows.push(row.join(','));
+    });
+    
+    const csvContent = csvRows.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `money-flow-expenses-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }, [expenses, nodes]);
+
+  const importFromJSON = useCallback((file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const content = e.target?.result as string;
+        const importData = JSON.parse(content);
+        
+        // Validate import data structure
+        if (!importData.data || !Array.isArray(importData.data.nodes) || 
+            !Array.isArray(importData.data.edges) || !Array.isArray(importData.data.expenses)) {
+          throw new Error('Invalid file format');
+        }
+
+        // Confirm import with user
+        const confirmed = window.confirm(
+          `Import data from ${importData.exportDate ? new Date(importData.exportDate).toLocaleDateString() : 'unknown date'}?\n\n` +
+          `This will replace:\n` +
+          `• ${importData.data.nodes.length} nodes\n` +
+          `• ${importData.data.edges.length} edges\n` +
+          `• ${importData.data.expenses.length} expenses\n\n` +
+          `Current data will be backed up to localStorage first.`
+        );
+
+        if (!confirmed) return;
+
+        // Backup current data
+        const backup = {
+          nodes: localStorage.getItem("moneyflow-nodes"),
+          edges: localStorage.getItem("moneyflow-edges"),
+          expenses: localStorage.getItem('moneyflow-expenses'),
+          timestamp: new Date().toISOString()
+        };
+        localStorage.setItem('moneyflow-backup', JSON.stringify(backup));
+
+        // Import new data
+        const importedNodes = [...importData.data.nodes];
+        const importedEdges = [...importData.data.edges];
+        
+        // Ensure system nodes exist
+        const hasTotalNode = importedNodes.some(n => n.id === 'total-node');
+        const hasRemainingNode = importedNodes.some(n => n.id === 'remaining-node');
+        
+        if (!hasTotalNode) {
+          importedNodes.push({
+            id: 'total-node',
+            type: 'total',
+            position: { x: 300, y: 200 },
+            data: { total: 0 }
+          });
+        }
+        
+        if (!hasRemainingNode) {
+          importedNodes.push({
+            id: 'remaining-node',
+            type: 'remaining',
+            position: { x: 300, y: 350 },
+            data: { amount: 0 }
+          });
+        }
+
+        // Ensure system edge exists
+        const hasSystemEdge = importedEdges.some(e => 
+          e.source === 'total-node' && e.target === 'remaining-node'
+        );
+        
+        if (!hasSystemEdge) {
+          importedEdges.push({
+            id: 'total-to-remaining-edge',
+            source: 'total-node',
+            target: 'remaining-node',
+            type: 'default'
+          });
+        }
+
+        setNodes(importedNodes);
+        setEdges(importedEdges);
+        setExpenses(importData.data.expenses);
+        
+        alert(`Successfully imported ${importData.data.nodes.length} nodes, ${importData.data.edges.length} edges, and ${importData.data.expenses.length} expenses.`);
+        
+      } catch (error) {
+        console.error('Import failed:', error);
+        alert(`Import failed: ${error instanceof Error ? error.message : 'Invalid file format'}`);
+      }
+    };
+    reader.readAsText(file);
+  }, []);
+
+  const importExpensesFromCSV = useCallback((file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const content = e.target?.result as string;
+        const lines = content.split('\n').filter(line => line.trim());
+        
+        if (lines.length < 2) {
+          throw new Error('CSV file appears to be empty or invalid');
+        }
+
+        const headers = lines[0].split(',').map(h => h.trim().replace(/^"(.*)"$/, '$1'));
+        const importedExpenses: Expense[] = [];
+
+        for (let i = 1; i < lines.length; i++) {
+          const values = lines[i].split(',').map(v => v.trim().replace(/^"(.*)"$/, '$1'));
+          
+          if (values.length < headers.length) continue; // Skip incomplete rows
+          
+          const expense: Expense = {
+            id: `exp_${Date.now()}_${i}`,
+            date: values[0] || new Date().toISOString().slice(0, 10),
+            description: values[1] || 'Imported expense',
+            amount: parseFloat(values[2]) || 0,
+            merchant: values[4] || undefined,
+            vatAmount: values[5] ? parseFloat(values[5]) : undefined,
+            currency: values[6] || undefined,
+            notes: values[7] || undefined
+          };
+
+          // Try to map category
+          const categoryName = values[3];
+          if (categoryName) {
+            const matchingDrain = nodes.find(n => 
+              n.type === 'drain' && 
+              n.data.label.toLowerCase() === categoryName.toLowerCase()
+            );
+            if (matchingDrain) {
+              expense.drainNodeId = matchingDrain.id;
+            }
+          }
+
+          if (expense.amount > 0) {
+            importedExpenses.push(expense);
+          }
+        }
+
+        if (importedExpenses.length === 0) {
+          throw new Error('No valid expenses found in CSV file');
+        }
+
+        const confirmed = window.confirm(
+          `Import ${importedExpenses.length} expenses from CSV?\n\n` +
+          `This will add to your existing expenses (not replace them).`
+        );
+
+        if (confirmed) {
+          setExpenses(prev => [...prev, ...importedExpenses]);
+          alert(`Successfully imported ${importedExpenses.length} expenses from CSV.`);
+        }
+
+      } catch (error) {
+        console.error('CSV import failed:', error);
+        alert(`CSV import failed: ${error instanceof Error ? error.message : 'Invalid file format'}`);
+      }
+    };
+    reader.readAsText(file);
+  }, [nodes]);
+
   const ExpenseView = () => (
     <div style={{ maxWidth: 900, marginTop: 12 }}>
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: 12 }}>
@@ -1494,6 +1741,67 @@ function FlowCanvas() {
         </div>
       </div>
       <div style={{ fontSize: 13, color: '#444', marginBottom: 8 }}>Expenses in current {timeGranularity}: {filteredExpenses.length} | Total: kr {formatNOK(totalActualThisPeriod)}</div>
+      
+      {/* Import/Export Controls */}
+      <div style={{ marginBottom: 12, padding: '8px 12px', background: '#f8f9fa', borderRadius: 6, border: '1px solid #dee2e6' }}>
+        <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 6 }}>Import/Export</div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <button
+            onClick={exportToJSON}
+            style={{ background: '#2D8A5F', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: 4, cursor: 'pointer', fontSize: 12 }}
+          >
+            📦 Export All (JSON)
+          </button>
+          <button
+            onClick={exportExpensesToCSV}
+            style={{ background: '#4A90E2', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: 4, cursor: 'pointer', fontSize: 12 }}
+          >
+            📊 Export Expenses (CSV)
+          </button>
+          <input
+            type="file"
+            accept=".json"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) {
+                importFromJSON(file);
+                e.target.value = ''; // Clear input
+              }
+            }}
+            style={{ display: 'none' }}
+            id="import-json"
+          />
+          <label
+            htmlFor="import-json"
+            style={{ background: '#6B46C1', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: 4, cursor: 'pointer', fontSize: 12, display: 'inline-block' }}
+          >
+            📥 Import All (JSON)
+          </label>
+          <input
+            type="file"
+            accept=".csv"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) {
+                importExpensesFromCSV(file);
+                e.target.value = ''; // Clear input
+              }
+            }}
+            style={{ display: 'none' }}
+            id="import-csv"
+          />
+          <label
+            htmlFor="import-csv"
+            style={{ background: '#B22222', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: 4, cursor: 'pointer', fontSize: 12, display: 'inline-block' }}
+          >
+            📥 Import Expenses (CSV)
+          </label>
+        </div>
+        <div style={{ fontSize: 11, color: '#666', marginTop: 4 }}>
+          JSON: Complete backup/restore • CSV: Expenses only for spreadsheet analysis
+        </div>
+      </div>
+
       <div style={{ overflowX: 'auto' }}>
         <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 14 }}>
           <thead>
@@ -1785,6 +2093,52 @@ function FlowCanvas() {
           <div style={{ marginTop: 4 }}>Remaining: <span style={{ fontWeight: 500 }}>kr {formatNOK(remaining)}</span></div>
           <div style={{ fontSize: '0.85em', color: '#444', marginLeft: 8 }}>≈ Yearly Remaining: kr {formatNOK(remaining * 12)}</div>
           <div style={{ marginTop: 8, borderTop: '1px solid #eee', paddingTop: 8 }}>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 8 }}>
+              <button
+                onClick={exportToJSON}
+                style={{
+                  background: '#2D8A5F',
+                  color: 'white',
+                  border: 'none',
+                  padding: '4px 8px',
+                  borderRadius: 4,
+                  cursor: 'pointer',
+                  fontSize: '0.9em',
+                }}
+                title="Export complete app data as JSON backup"
+              >
+                Export All
+              </button>
+              <input
+                type="file"
+                accept=".json"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    importFromJSON(file);
+                    e.target.value = ''; // Clear input
+                  }
+                }}
+                style={{ display: 'none' }}
+                id="import-json-main"
+              />
+              <label
+                htmlFor="import-json-main"
+                style={{
+                  background: '#6B46C1',
+                  color: 'white',
+                  border: 'none',
+                  padding: '4px 8px',
+                  borderRadius: 4,
+                  cursor: 'pointer',
+                  fontSize: '0.9em',
+                  display: 'inline-block'
+                }}
+                title="Import complete app data from JSON backup"
+              >
+                Import All
+              </label>
+            </div>
             <button
               onClick={clearAllNodes}
               style={{

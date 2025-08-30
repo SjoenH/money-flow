@@ -1,0 +1,89 @@
+{
+  "version": "1.0.0",
+  "exportDate": "2024-12-30T15:37:00.000Z",
+  "data": {
+    "nodes": [
+      {
+        "id": "node_0",
+        "type": "source",
+        "position": { "x": 50, "y": 50 },
+        "data": { "label": "Salary", "amount": "45000" }
+      },
+      {
+        "id": "node_1",
+        "type": "source", 
+        "position": { "x": 250, "y": 50 },
+        "data": { "label": "Freelance", "amount": "8000" }
+      },
+      {
+        "id": "node_2",
+        "type": "drain",
+        "position": { "x": 50, "y": 400 },
+        "data": { "label": "Rent", "amount": "15000", "drainType": "amount" }
+      },
+      {
+        "id": "node_3",
+        "type": "drain",
+        "position": { "x": 250, "y": 400 },
+        "data": { "label": "Groceries", "amount": "4000", "drainType": "amount" }
+      },
+      {
+        "id": "node_4",
+        "type": "drain",
+        "position": { "x": 450, "y": 400 },
+        "data": { "label": "Savings", "amount": "20", "drainType": "percent" }
+      }
+    ],
+    "edges": [
+      {
+        "id": "edge-node_0-total-node",
+        "source": "node_0",
+        "target": "total-node",
+        "type": "default"
+      },
+      {
+        "id": "edge-node_1-total-node",
+        "source": "node_1", 
+        "target": "total-node",
+        "type": "default"
+      },
+      {
+        "id": "edge-total-node-node_2",
+        "source": "total-node",
+        "target": "node_2",
+        "type": "default"
+      },
+      {
+        "id": "edge-total-node-node_3",
+        "source": "total-node",
+        "target": "node_3", 
+        "type": "default"
+      },
+      {
+        "id": "edge-total-node-node_4",
+        "source": "total-node",
+        "target": "node_4",
+        "type": "default"
+      }
+    ],
+    "expenses": [
+      {
+        "id": "exp_1706188800000",
+        "date": "2024-01-25",
+        "description": "Weekly groceries",
+        "amount": 856.50,
+        "drainNodeId": "node_3",
+        "merchant": "REMA 1000",
+        "vatAmount": 171.30,
+        "currency": "NOK"
+      },
+      {
+        "id": "exp_1706275200000", 
+        "date": "2024-01-26",
+        "description": "Coffee meeting",
+        "amount": 89.00,
+        "notes": "Business meeting expense"
+      }
+    ]
+  }
+}
