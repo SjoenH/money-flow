@@ -1792,7 +1792,7 @@ function FlowCanvas() {
               return (
                 <tr key={e.id}>
                   <td style={{ padding: '4px 8px', border: '1px solid #eee', whiteSpace: 'nowrap' }}>{e.date}</td>
-                  <td style={{ padding: '4px 8px', border: '1px solid #eee' }} title={e.receiptText ? 'Click to view OCR text' : ''}>
+                  <td style={{ padding: '4px 8px', border: '1px solid #eee' }} title={e.receiptText ? 'Has OCR text data' : ''}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       <span>{e.description}</span>
                       {e.items && e.items.length > 0 && (
@@ -1801,6 +1801,26 @@ function FlowCanvas() {
                           style={{ background: '#4A5568', color: '#fff', border: 'none', padding: '2px 6px', fontSize: 11, borderRadius: 4, cursor: 'pointer' }}
                           title="Toggle line items"
                         >{expandedExpenses[e.id] ? 'Hide' : 'Items'} ({e.items.length})</button>
+                      )}
+                      {e.receiptText && (
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(e.receiptText || '').then(() => {
+                              alert('OCR text copied to clipboard!');
+                            }).catch(() => {
+                              // Fallback for older browsers
+                              const textArea = document.createElement('textarea');
+                              textArea.value = e.receiptText || '';
+                              document.body.appendChild(textArea);
+                              textArea.select();
+                              document.execCommand('copy');
+                              document.body.removeChild(textArea);
+                              alert('OCR text copied to clipboard!');
+                            });
+                          }}
+                          style={{ background: '#28A745', color: '#fff', border: 'none', padding: '2px 6px', fontSize: 11, borderRadius: 4, cursor: 'pointer' }}
+                          title="Copy OCR text to clipboard"
+                        >📋 Copy OCR</button>
                       )}
                     </div>
                     {e.merchant && <div style={{ fontSize: 11, color: '#555' }}>{e.merchant}</div>}
