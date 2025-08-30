@@ -7,10 +7,12 @@ The Money Flow Visualizer includes comprehensive end-to-end tests using Playwrig
 ## 🚀 Running Tests
 
 ### Prerequisites
+
 - Node.js ≥ 20.19 (for Vite 7)
 - Playwright browsers installed
 
 ### Quick Start
+
 ```bash
 # Run all tests
 pnpm test
@@ -29,7 +31,9 @@ pnpm test:report
 ```
 
 ### Test Configuration
+
 Tests are configured in `playwright.config.ts` with:
+
 - Automatic dev server startup
 - Cross-browser testing (Chromium, Firefox, WebKit)
 - Trace collection on failures
@@ -38,6 +42,7 @@ Tests are configured in `playwright.config.ts` with:
 ## 📋 Test Coverage
 
 ### Core Functionality Tests (`basic-functionality.spec.ts`)
+
 - ✅ Application loading and initialization
 - ✅ Source and drain node creation
 - ✅ Percentage-based drain calculations  
@@ -46,6 +51,7 @@ Tests are configured in `playwright.config.ts` with:
 - ✅ Clear all functionality
 
 ### Import/Export Tests (`import-export.spec.ts`)
+
 - ✅ JSON export (complete app backup)
 - ✅ CSV export (expenses only)
 - ✅ Budget-only JSON export
@@ -55,6 +61,7 @@ Tests are configured in `playwright.config.ts` with:
 - ✅ Automatic backup creation before imports
 
 ### Expense Management Tests (`expense-management.spec.ts`)
+
 - ✅ Manual expense entry
 - ✅ Automatic categorization
 - ✅ Category assignment and modification
@@ -66,6 +73,7 @@ Tests are configured in `playwright.config.ts` with:
 - ✅ Structured parsing toggle
 
 ### Graph Interactions Tests (`graph-interactions.spec.ts`)
+
 - ✅ ReactFlow graph rendering
 - ✅ Node creation and connections
 - ✅ Inline editing (labels and amounts)
@@ -76,6 +84,7 @@ Tests are configured in `playwright.config.ts` with:
 - ✅ System node protection
 
 ### End-to-End Workflow Tests (`e2e-workflow.spec.ts`)
+
 - ✅ Complete budget planning workflow
 - ✅ Complex multi-source budgets
 - ✅ Cross-session data persistence
@@ -106,27 +115,32 @@ await waitForDownload(page, /^money-flow-backup-\d{4}-\d{2}-\d{2}\.json$/);
 ## 📊 Test Data
 
 Sample test data files are provided:
+
 - `sample-expenses.csv` - Example expense data for import testing
 - `sample-backup.json` - Complete app backup for import testing
 
 ## 🐛 Debugging Tests
 
 ### Debug Specific Test
+
 ```bash
 npx playwright test expense-management.spec.ts --debug
 ```
 
 ### Run Single Test File
+
 ```bash
 npx playwright test basic-functionality.spec.ts
 ```
 
 ### Run Specific Test
+
 ```bash
 npx playwright test -g "should export complete app data"
 ```
 
 ### View Test Reports
+
 ```bash
 pnpm test:report
 ```
@@ -134,12 +148,14 @@ pnpm test:report
 ## 🔧 CI/CD Integration
 
 Tests are configured for CI environments:
+
 - Retry failed tests 2x on CI
 - Single worker in CI for stability
 - HTML reports generated
 - Traces collected on failures
 
 ### GitHub Actions Example
+
 ```yaml
 - name: Install dependencies
   run: pnpm install
@@ -161,34 +177,42 @@ Tests are configured for CI environments:
 ## 🎯 Test Best Practices
 
 ### Data Isolation
+
 Each test starts with a clean state using `clearAppData()` to prevent test interference.
 
 ### Realistic User Interactions
+
 Tests simulate real user workflows including:
+
 - Form submissions
 - File uploads/downloads
 - Confirmation dialogs
 - Multi-step processes
 
 ### Error Scenarios
+
 Tests cover error conditions:
+
 - Invalid file formats
 - Network failures
 - Edge cases (zero/negative values)
 - Malformed data
 
 ### Cross-Browser Testing
+
 All tests run across major browsers to ensure compatibility.
 
 ## 📈 Continuous Improvement
 
 ### Adding New Tests
+
 1. Create test file: `tests/feature-name.spec.ts`
 2. Import utilities: `import { ... } from './test-utils'`
 3. Follow existing patterns for consistency
 4. Add to CI pipeline
 
 ### Test Maintenance
+
 - Update tests when features change
 - Add new test cases for bug fixes
 - Keep test data current

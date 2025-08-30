@@ -1465,7 +1465,7 @@ function FlowCanvas() {
         expenses
       }
     };
-    
+
     const dataStr = JSON.stringify(exportData, null, 2);
     const dataBlob = new Blob([dataStr], { type: 'application/json' });
     const url = URL.createObjectURL(dataBlob);
@@ -1478,12 +1478,12 @@ function FlowCanvas() {
 
   const exportExpensesToCSV = useCallback(() => {
     const headers = [
-      'Date', 'Description', 'Amount (kr)', 'Category', 'Merchant', 
+      'Date', 'Description', 'Amount (kr)', 'Category', 'Merchant',
       'VAT Amount', 'Currency', 'Notes', 'Has Line Items'
     ];
-    
+
     const csvRows = [headers.join(',')];
-    
+
     expenses.forEach(expense => {
       const drainNode = expense.drainNodeId ? nodes.find(n => n.id === expense.drainNodeId) : undefined;
       const row = [
@@ -1499,7 +1499,7 @@ function FlowCanvas() {
       ];
       csvRows.push(row.join(','));
     });
-    
+
     const csvContent = csvRows.join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -1516,10 +1516,10 @@ function FlowCanvas() {
       try {
         const content = e.target?.result as string;
         const importData = JSON.parse(content);
-        
+
         // Validate import data structure
-        if (!importData.data || !Array.isArray(importData.data.nodes) || 
-            !Array.isArray(importData.data.edges) || !Array.isArray(importData.data.expenses)) {
+        if (!importData.data || !Array.isArray(importData.data.nodes) ||
+          !Array.isArray(importData.data.edges) || !Array.isArray(importData.data.expenses)) {
           throw new Error('Invalid file format');
         }
 
@@ -1547,11 +1547,11 @@ function FlowCanvas() {
         // Import new data
         const importedNodes = [...importData.data.nodes];
         const importedEdges = [...importData.data.edges];
-        
+
         // Ensure system nodes exist
         const hasTotalNode = importedNodes.some(n => n.id === 'total-node');
         const hasRemainingNode = importedNodes.some(n => n.id === 'remaining-node');
-        
+
         if (!hasTotalNode) {
           importedNodes.push({
             id: 'total-node',
@@ -1560,7 +1560,7 @@ function FlowCanvas() {
             data: { total: 0 }
           });
         }
-        
+
         if (!hasRemainingNode) {
           importedNodes.push({
             id: 'remaining-node',
@@ -1571,10 +1571,10 @@ function FlowCanvas() {
         }
 
         // Ensure system edge exists
-        const hasSystemEdge = importedEdges.some(e => 
+        const hasSystemEdge = importedEdges.some(e =>
           e.source === 'total-node' && e.target === 'remaining-node'
         );
-        
+
         if (!hasSystemEdge) {
           importedEdges.push({
             id: 'total-to-remaining-edge',
@@ -1587,9 +1587,9 @@ function FlowCanvas() {
         setNodes(importedNodes);
         setEdges(importedEdges);
         setExpenses(importData.data.expenses);
-        
+
         alert(`Successfully imported ${importData.data.nodes.length} nodes, ${importData.data.edges.length} edges, and ${importData.data.expenses.length} expenses.`);
-        
+
       } catch (error) {
         console.error('Import failed:', error);
         alert(`Import failed: ${error instanceof Error ? error.message : 'Invalid file format'}`);
@@ -1604,7 +1604,7 @@ function FlowCanvas() {
       try {
         const content = e.target?.result as string;
         const lines = content.split('\n').filter(line => line.trim());
-        
+
         if (lines.length < 2) {
           throw new Error('CSV file appears to be empty or invalid');
         }
@@ -1614,9 +1614,9 @@ function FlowCanvas() {
 
         for (let i = 1; i < lines.length; i++) {
           const values = lines[i].split(',').map(v => v.trim().replace(/^"(.*)"$/, '$1'));
-          
+
           if (values.length < headers.length) continue; // Skip incomplete rows
-          
+
           const expense: Expense = {
             id: `exp_${Date.now()}_${i}`,
             date: values[0] || new Date().toISOString().slice(0, 10),
@@ -1631,8 +1631,8 @@ function FlowCanvas() {
           // Try to map category
           const categoryName = values[3];
           if (categoryName) {
-            const matchingDrain = nodes.find(n => 
-              n.type === 'drain' && 
+            const matchingDrain = nodes.find(n =>
+              n.type === 'drain' &&
               n.data.label.toLowerCase() === categoryName.toLowerCase()
             );
             if (matchingDrain) {
@@ -1741,7 +1741,7 @@ function FlowCanvas() {
         </div>
       </div>
       <div style={{ fontSize: 13, color: '#444', marginBottom: 8 }}>Expenses in current {timeGranularity}: {filteredExpenses.length} | Total: kr {formatNOK(totalActualThisPeriod)}</div>
-      
+
       {/* Import/Export Controls */}
       <div style={{ marginBottom: 12, padding: '8px 12px', background: '#f8f9fa', borderRadius: 6, border: '1px solid #dee2e6' }}>
         <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 6 }}>Import/Export</div>
