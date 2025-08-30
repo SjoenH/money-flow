@@ -13,6 +13,7 @@ import type { Node, NodeChange, NodeProps, Edge, EdgeChange } from "reactflow";
 
 import "reactflow/dist/style.css";
 import { runOCR } from './ocr';
+import { parseNorwegianCurrency, extractStructuredFields } from './utils/currencyParser';
 
 // Evil Clippy AI Component
 interface BudgetData {
@@ -49,34 +50,11 @@ interface LineItem {
   drainNodeId?: string; // mapped category (drain) for this item
 }
 
-// Basic structured field extraction from Norwegian/English receipt text.
-function extractStructuredFields(text: string): { merchant?: string; vatAmount?: number; total?: number; currency?: string } {
-  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-  let merchant = lines[0]?.slice(0, 60);
-  // Try to find a line with 'Org.nr' for merchant
-  const orgIdx = lines.findIndex(l => /org\.? *nr/i.test(l));
-  if (orgIdx > 0) merchant = lines[Math.max(0, orgIdx - 1)].slice(0, 60);
-  // Currency detection (NOK by default)
-  const currency = /\b(EUR|USD|GBP|SEK|DKK)\b/i.test(text) ? (text.match(/\b(EUR|USD|GBP|SEK|DKK)\b/i)?.[1].toUpperCase()) : 'NOK';
-  // VAT (MVA) extraction: look for lines containing MVA or VAT with a number
-  let vatAmount: number | undefined;
-  const vatMatch = text.match(/(?:MVA|VAT)[^0-9]{0,10}([0-9]+[.,][0-9]{2})/i);
-  if (vatMatch) {
-    vatAmount = parseFloat(vatMatch[1].replace(/,/g, '.')) || undefined;
-  }
-  // Total extraction: pick the largest monetary number near keywords
-  const moneyRegex = /(?:(?:Total|Sum|Å betale|Beløp)\D{0,15})?([0-9]{1,3}(?:[ .][0-9]{3})*[.,][0-9]{2})/gi;
-  let max = 0;
-  let match: RegExpExecArray | null;
-  while ((match = moneyRegex.exec(text))) {
-    const raw = match[1];
-    const normalized = parseFloat(raw.replace(/[ .]/g, '').replace(',', '.'));
-    if (!isNaN(normalized) && normalized > max && normalized < 1_000_000) {
-      max = normalized;
-    }
-  }
-  const total = max || undefined;
-  return { merchant, vatAmount, total, currency };
+// Currency formatter (Norwegian style with space thousands separator)
+function formatNOK(value: string | number): string {
+  const num = typeof value === 'number' ? value : parseFloat(value || '0');
+  if (isNaN(num)) return '0,00';
+  return num.toLocaleString('nb-NO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 interface AISession {
@@ -87,7 +65,7 @@ interface AISession {
 interface AICreateOptions {
   systemPrompt?: string;
   temperature?: number;
-  topK?: number; // added
+  topK?: number;
 }
 
 interface AIWindow extends Window {
@@ -97,12 +75,6 @@ interface AIWindow extends Window {
       create: (options?: AICreateOptions) => Promise<AISession>;
     };
   };
-}
-// Currency formatter (Norwegian style with space thousands separator)
-function formatNOK(value: string | number): string {
-  const num = typeof value === 'number' ? value : parseFloat(value || '0');
-  if (isNaN(num)) return '0,00';
-  return num.toLocaleString('nb-NO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 // EvilClippy component (clean version)
@@ -1284,16 +1256,16 @@ function FlowCanvas() {
     const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
     const items: Omit<LineItem, 'id'>[] = [];
     const skipRegex = /^(sum|total|mva|vat|beløp|å betale|change|subtotal|til gode)/i;
-    // Pattern: description ... price (with , or . decimals)
-    const priceAtEnd = /(.*?)([-]?\d{1,3}(?:[ .]\d{3})*[.,]\d{2})$/;
+    // Enhanced pattern to capture various Norwegian price formats
+    const priceAtEnd = /(.*?)([-]?\d{1,4}(?:[ .,]\d{3})*[.,]\d{2}|\d+[.,]\d{2}|\d+)$/;
     for (const raw of lines) {
       if (raw.length < 3) continue;
       if (skipRegex.test(raw)) continue;
       const m = raw.match(priceAtEnd);
       if (!m) continue;
       const priceStr = m[2];
-      const value = parseFloat(priceStr.replace(/[ .]/g, '').replace(',', '.'));
-      if (!isFinite(value) || value <= 0 || value > 1_000_000) continue;
+      const value = parseNorwegianCurrency(priceStr);
+      if (!value || value <= 0 || value > 1_000_000) continue;
       let desc = m[1].trim().replace(/[-–]+$/, '').trim();
       if (!desc || /^(kr|nok)$/i.test(desc)) continue;
       // Attempt quantity x unit pattern inside description: e.g., "2x10,00" or "3 * 5,50"
@@ -1302,7 +1274,8 @@ function FlowCanvas() {
       const qtyMatch = desc.match(qtyRegex);
       if (qtyMatch) {
         quantity = parseFloat(qtyMatch[1]);
-        unitPrice = parseFloat(qtyMatch[2].replace(/[ .]/g, '').replace(',', '.'));
+        const unitPriceStr = qtyMatch[2];
+        unitPrice = parseNorwegianCurrency(unitPriceStr);
         // Remove from desc
         desc = desc.replace(qtyRegex, '').trim();
         if (quantity && unitPrice && Math.abs((quantity * unitPrice) - value) / value > 0.25) {
@@ -1465,7 +1438,7 @@ function FlowCanvas() {
         expenses
       }
     };
-    
+
     const dataStr = JSON.stringify(exportData, null, 2);
     const dataBlob = new Blob([dataStr], { type: 'application/json' });
     const url = URL.createObjectURL(dataBlob);
@@ -1478,12 +1451,12 @@ function FlowCanvas() {
 
   const exportExpensesToCSV = useCallback(() => {
     const headers = [
-      'Date', 'Description', 'Amount (kr)', 'Category', 'Merchant', 
+      'Date', 'Description', 'Amount (kr)', 'Category', 'Merchant',
       'VAT Amount', 'Currency', 'Notes', 'Has Line Items'
     ];
-    
+
     const csvRows = [headers.join(',')];
-    
+
     expenses.forEach(expense => {
       const drainNode = expense.drainNodeId ? nodes.find(n => n.id === expense.drainNodeId) : undefined;
       const row = [
@@ -1499,7 +1472,7 @@ function FlowCanvas() {
       ];
       csvRows.push(row.join(','));
     });
-    
+
     const csvContent = csvRows.join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -1516,10 +1489,10 @@ function FlowCanvas() {
       try {
         const content = e.target?.result as string;
         const importData = JSON.parse(content);
-        
+
         // Validate import data structure
-        if (!importData.data || !Array.isArray(importData.data.nodes) || 
-            !Array.isArray(importData.data.edges) || !Array.isArray(importData.data.expenses)) {
+        if (!importData.data || !Array.isArray(importData.data.nodes) ||
+          !Array.isArray(importData.data.edges) || !Array.isArray(importData.data.expenses)) {
           throw new Error('Invalid file format');
         }
 
@@ -1547,11 +1520,11 @@ function FlowCanvas() {
         // Import new data
         const importedNodes = [...importData.data.nodes];
         const importedEdges = [...importData.data.edges];
-        
+
         // Ensure system nodes exist
         const hasTotalNode = importedNodes.some(n => n.id === 'total-node');
         const hasRemainingNode = importedNodes.some(n => n.id === 'remaining-node');
-        
+
         if (!hasTotalNode) {
           importedNodes.push({
             id: 'total-node',
@@ -1560,7 +1533,7 @@ function FlowCanvas() {
             data: { total: 0 }
           });
         }
-        
+
         if (!hasRemainingNode) {
           importedNodes.push({
             id: 'remaining-node',
@@ -1571,10 +1544,10 @@ function FlowCanvas() {
         }
 
         // Ensure system edge exists
-        const hasSystemEdge = importedEdges.some(e => 
+        const hasSystemEdge = importedEdges.some(e =>
           e.source === 'total-node' && e.target === 'remaining-node'
         );
-        
+
         if (!hasSystemEdge) {
           importedEdges.push({
             id: 'total-to-remaining-edge',
@@ -1587,9 +1560,9 @@ function FlowCanvas() {
         setNodes(importedNodes);
         setEdges(importedEdges);
         setExpenses(importData.data.expenses);
-        
+
         alert(`Successfully imported ${importData.data.nodes.length} nodes, ${importData.data.edges.length} edges, and ${importData.data.expenses.length} expenses.`);
-        
+
       } catch (error) {
         console.error('Import failed:', error);
         alert(`Import failed: ${error instanceof Error ? error.message : 'Invalid file format'}`);
@@ -1604,7 +1577,7 @@ function FlowCanvas() {
       try {
         const content = e.target?.result as string;
         const lines = content.split('\n').filter(line => line.trim());
-        
+
         if (lines.length < 2) {
           throw new Error('CSV file appears to be empty or invalid');
         }
@@ -1614,9 +1587,9 @@ function FlowCanvas() {
 
         for (let i = 1; i < lines.length; i++) {
           const values = lines[i].split(',').map(v => v.trim().replace(/^"(.*)"$/, '$1'));
-          
+
           if (values.length < headers.length) continue; // Skip incomplete rows
-          
+
           const expense: Expense = {
             id: `exp_${Date.now()}_${i}`,
             date: values[0] || new Date().toISOString().slice(0, 10),
@@ -1631,8 +1604,8 @@ function FlowCanvas() {
           // Try to map category
           const categoryName = values[3];
           if (categoryName) {
-            const matchingDrain = nodes.find(n => 
-              n.type === 'drain' && 
+            const matchingDrain = nodes.find(n =>
+              n.type === 'drain' &&
               n.data.label.toLowerCase() === categoryName.toLowerCase()
             );
             if (matchingDrain) {
@@ -1741,7 +1714,7 @@ function FlowCanvas() {
         </div>
       </div>
       <div style={{ fontSize: 13, color: '#444', marginBottom: 8 }}>Expenses in current {timeGranularity}: {filteredExpenses.length} | Total: kr {formatNOK(totalActualThisPeriod)}</div>
-      
+
       {/* Import/Export Controls */}
       <div style={{ marginBottom: 12, padding: '8px 12px', background: '#f8f9fa', borderRadius: 6, border: '1px solid #dee2e6' }}>
         <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 6 }}>Import/Export</div>
