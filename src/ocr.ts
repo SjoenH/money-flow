@@ -1,5 +1,9 @@
 // Simple client-side OCR wrapper using dynamic import of tesseract.js
 // Supports multi-language (e.g., 'nor+eng') and progress reporting.
+//
+// VERSION DEPENDENCY NOTE: Test data in currencyParser.test.ts was generated 
+// with Tesseract.js ~5.0.x. If upgrading OCR engine, consider regenerating 
+// test cases to maintain realistic parsing challenges.
 
 export interface OCRResult { text: string; confidence?: number }
 

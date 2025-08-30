@@ -66,22 +66,77 @@ export function extractStructuredFields(text: string): {
     currency?: string
 } {
     const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-    let merchant = lines[0]?.slice(0, 60);
 
-    // Try to find a line with 'Org.nr' for merchant
-    const orgIdx = lines.findIndex(l => /org\.?\s*nr/i.test(l));
-    if (orgIdx > 0) {
-        merchant = lines[orgIdx - 1].slice(0, 60);
+    // Enhanced merchant detection - look for common store patterns first
+    let merchant = lines[0]?.slice(0, 60);
+    let foundStorePattern = false;
+
+    // Look for known Norwegian store names or patterns in noisy text
+    const storePatterns = [
+        /BILTEMA\s*NORGE/i,
+        /BILTEMA/i,
+        /ANTONSPORT/i,
+        /COOP\s*PRIX/i,
+        /REMA\s*1000/i,
+        /ICA\s*SUPERMARKET/i,
+        /KIWI/i,
+        /BUNNPRIS/i,
+        /MENY/i,
+        /EUROPRIS/i,
+        /PLANTASJEN/i,
+        /SPORTSHOLDING/i // This might catch the parent company
+    ];
+
+    for (const pattern of storePatterns) {
+        const match = text.match(pattern);
+        if (match) {
+            let foundMerchant = match[0].replace(/\s+/g, ' ').trim();
+            // Special handling: if we find SPORTSHOLDING, look nearby for ANTONSPORT
+            if (/SPORTSHOLDING/i.test(foundMerchant)) {
+                const antonsportMatch = text.match(/ANTONSPORT/i);
+                if (antonsportMatch) {
+                    foundMerchant = antonsportMatch[0];
+                }
+            }
+            merchant = foundMerchant;
+            foundStorePattern = true;
+            break;
+        }
     }
 
-    // Currency detection (NOK by default)
-    const currency = /\b(EUR|USD|GBP|SEK|DKK)\b/i.test(text)
-        ? (text.match(/\b(EUR|USD|GBP|SEK|DKK)\b/i)?.[1].toUpperCase())
-        : 'NOK';
+    // Try to find a line with 'Org.nr' or 'Bus.Reg.No' for merchant (only if no store pattern found)
+    if (!foundStorePattern) {
+        const orgIdx = lines.findIndex(l => /(?:org\.?\s*nr|bus\.?\s*reg\.?\s*no)/i.test(l));
+        if (orgIdx >= 0) {
+            // Look for merchant name in the lines above the org.nr line
+            for (let i = Math.max(0, orgIdx - 3); i < orgIdx; i++) {
+                const line = lines[i];
+                // Skip lines that look like addresses (contain numbers and specific patterns)
+                if (line && !/^\d+\s|\d{4}\s/.test(line) && !/(telefon|phone)/i.test(line) && line.length > 2) {
+                    // Look for lines that seem like business names (contain letters, may have AS/AB etc.)
+                    if (/[a-zA-ZæøåÆØÅ]{3,}/.test(line)) {
+                        merchant = line.slice(0, 60).trim();
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    // Currency detection (NOK by default, look for explicit currency mentions)
+    let currency = 'NOK';
+    const currencyMatch = text.match(/\b(EUR|USD|GBP|SEK|DKK|NOK)\b/i);
+    if (currencyMatch) {
+        currency = currencyMatch[1].toUpperCase();
+    }
 
     // Enhanced VAT (MVA) extraction: look for lines containing MVA or VAT with a number
     let vatAmount: number | undefined;
     const vatMatches = [
+        // Match VAT breakdown line like "1599.20 25% 399.80 1999.00"
+        text.match(/([0-9]{1,4}(?:[.,]\s*[0-9]{3})*[.,][0-9]{2})\s*25%\s*([0-9]{1,4}(?:[.,]\s*[0-9]{3})*[.,][0-9]{2})/i),
+        // Match "Herav mva 82.10" format (common in Norwegian receipts)
+        text.match(/herav\s+mva\s+([0-9]{1,4}(?:[.,][0-9]{3})*[.,][0-9]{2})/i),
         text.match(/(?:MVA|VAT)\s*(?:25%?)?\s*([0-9]{1,4}(?:[.,][0-9]{3})*[.,][0-9]{2})/i),
         text.match(/MVA\s+([0-9]{1,4}(?:[.,][0-9]{3})*[.,][0-9]{2})/i),
         text.match(/([0-9]{1,4}(?:[.,][0-9]{3})*[.,][0-9]{2})\s*(?:MVA|VAT)/i)
@@ -89,22 +144,47 @@ export function extractStructuredFields(text: string): {
 
     for (const vatMatch of vatMatches) {
         if (vatMatch) {
-            vatAmount = parseNorwegianCurrency(vatMatch[1]);
+            // For the VAT breakdown format, take the second number (the VAT amount)
+            const vatString = vatMatch[2] || vatMatch[1];
+            vatAmount = parseNorwegianCurrency(vatString);
             if (vatAmount) break;
         }
     }
 
-    // Enhanced total extraction with better Norwegian currency support
-    const moneyRegex = /(?:(?:Total|Sum|Å betale|Beløp|Totalt|Subtotal|til gode)\D{0,15})?([0-9]{1,4}(?:[ .,][0-9]{3})*[.,][0-9]{2}|[0-9]+[.,][0-9]{2}|[0-9]+)/gi;
-    let max = 0;
-    let match: RegExpExecArray | null;
-    while ((match = moneyRegex.exec(text))) {
-        const raw = match[1];
-        const normalized = parseNorwegianCurrency(raw);
-        if (normalized && normalized > max && normalized < 1_000_000) {
-            max = normalized;
+    // Enhanced total extraction - look for specific total indicators first
+    let total: number | undefined;
+
+    // First try to find explicit total/sum lines
+    const totalPatterns = [
+        /(?:totalt|total|sum|å\s*betale|beløp|purchase\s*nok)\s*[:=]?\s*([0-9]{1,4}(?:[\s.,][0-9]{3})*[.,][0-9]{2}|[0-9]+[.,][0-9]{2})/gi,
+        /bank:\s*([0-9]{1,4}(?:[\s.,][0-9]{3})*[.,][0-9]{2})/gi,
+        /([0-9]{1,4}(?:[\s.,][0-9]{3})*[.,][0-9]{2})\s*(?:totalt|total|sum)/gi
+    ];
+
+    for (const pattern of totalPatterns) {
+        let match: RegExpExecArray | null;
+        pattern.lastIndex = 0; // Reset regex
+        while ((match = pattern.exec(text))) {
+            const amount = parseNorwegianCurrency(match[1]);
+            if (amount && amount > (total || 0) && amount < 1_000_000) {
+                total = amount;
+            }
         }
     }
-    const total = max || undefined;
+
+    // If no explicit total found, find the largest reasonable amount
+    if (!total) {
+        const moneyRegex = /([0-9]{1,4}(?:[\s.,][0-9]{3})*[.,][0-9]{2}|[0-9]+[.,][0-9]{2})/g;
+        let max = 0;
+        let match: RegExpExecArray | null;
+        while ((match = moneyRegex.exec(text))) {
+            const amount = parseNorwegianCurrency(match[1]);
+            if (amount && amount > max && amount < 1_000_000) {
+                max = amount;
+            }
+        }
+        total = max > 0 ? max : undefined;
+    }
+
     return { merchant, vatAmount, total, currency };
 }
