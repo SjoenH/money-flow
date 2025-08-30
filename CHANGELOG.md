@@ -1,3 +1,10 @@
+# [1.4.0](https://github.com/SjoenH/money-flow/compare/v1.3.0...v1.4.0) (2025-08-30)
+
+
+### Features
+
+* add OCR text copy button for debugging ([4b0dcaf](https://github.com/SjoenH/money-flow/commit/4b0dcaf0965bbcd1388f0c7db12ef05c9090d250))
+
 # [1.3.0](https://github.com/SjoenH/money-flow/compare/v1.2.0...v1.3.0) (2025-08-30)
 
 
