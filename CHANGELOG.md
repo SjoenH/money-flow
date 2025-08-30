@@ -1,3 +1,10 @@
+# [1.3.0](https://github.com/SjoenH/money-flow/compare/v1.2.0...v1.3.0) (2025-08-30)
+
+
+### Features
+
+* implement Norwegian currency delimiter handling in receipt OCR ([c6713e7](https://github.com/SjoenH/money-flow/commit/c6713e74c30f670d539434c5074536958cd4fbfb))
+
 # [1.2.0](https://github.com/SjoenH/money-flow/compare/v1.1.0...v1.2.0) (2025-08-30)
 
 
